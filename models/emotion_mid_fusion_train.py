@@ -10,7 +10,6 @@ from sklearn.metrics import classification_report
 import joblib
 
 # ================== 1. 路径与配置 ==================
-# 指向刚才提取出来的 896维 特征集
 FEATURE_PATH = r"E:\python_projects\data\processed\mid_fusion_features.npz"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -33,12 +32,12 @@ le = LabelEncoder()
 y_encoded = le.fit_transform(y)
 joblib.dump(le, ENCODER_SAVE_PATH)
 
-# 划分训练集和验证集 (80% 训练，20% 验证)
+# 划分训练集和验证集
 X_train, X_val, y_train, y_val = train_test_split(
     X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
 )
 
-# 标准化特征 (这一步对于融合特征非常重要，因为 ViT 和 AudioMLP 出来的特征量纲可能相差极大)
+# 标准化特征
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_val = scaler.transform(X_val)
@@ -56,12 +55,11 @@ val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 class CrossModalFusionNet(nn.Module):
     def __init__(self, input_dim=896, num_classes=7):
         super(CrossModalFusionNet, self).__init__()
-        # 因为输入是 896 维的高层语义特征，我们需要一个金字塔形的倒三角网络来降维并提炼分类信息
         self.network = nn.Sequential(
             nn.Linear(input_dim, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Dropout(0.5),  # 防止在极少量的 RAVDESS 数据上过拟合
+            nn.Dropout(0.5),
 
             nn.Linear(512, 256),
             nn.BatchNorm1d(256),
@@ -81,7 +79,6 @@ class CrossModalFusionNet(nn.Module):
 model = CrossModalFusionNet(input_dim=X.shape[1], num_classes=len(le.classes_)).to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-3)
-# 学习率衰减策略
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
 # ================== 4. 训练与早停逻辑 ==================

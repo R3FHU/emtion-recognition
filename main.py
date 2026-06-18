@@ -62,7 +62,7 @@ class AudioMLP(torch.nn.Module):
 
 
 # =========================
-# 1.5 中期跨模态特征融合网络 (95%准确率的超强大脑)
+# 1.5 中期跨模态特征融合网络
 # =========================
 class CrossModalFusionNet(torch.nn.Module):
     def __init__(self, input_dim=896, num_classes=7):
@@ -274,7 +274,7 @@ class ModernApp(QWidget):
             self.mid_fusion_model.load_state_dict(
                 torch.load(os.path.join(MODELS_DIR, 'best_mid_fusion_model.pt'), map_location="cpu"))
             self.mid_fusion_model.eval()
-            print("✅ 中期跨模态融合神经网络及 Scaler 加载成功！(运行在 CPU 上，保证界面流畅)")
+            print("✅ 中期跨模态融合神经网络及 Scaler 加载成功！")
         except Exception as e:
             print(f"❌ 中期融合网络加载失败: {e}")
 

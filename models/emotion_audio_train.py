@@ -42,23 +42,19 @@ y = np.concatenate(y_list)
 print(f"✅ 加载完成！总样本数: {X.shape[0]}, 特征维度: {X.shape[1]}")
 
 # ================== 3. 数据预处理 ==================
-# 标签转整数 (0-6)
 le = LabelEncoder()
 y_encoded = le.fit_transform(y)
 joblib.dump(le, ENCODER_SAVE_PATH)
 
-# 划分训练/验证集 (8:2)
 X_train, X_val, y_train, y_val = train_test_split(
     X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
 )
 
-# 标准化
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_val = scaler.transform(X_val)
 joblib.dump(scaler, SCALER_SAVE_PATH)
 
-# 转换为 PyTorch 张量
 train_dataset = TensorDataset(torch.FloatTensor(X_train), torch.LongTensor(y_train))
 val_dataset = TensorDataset(torch.FloatTensor(X_val), torch.LongTensor(y_val))
 
@@ -89,8 +85,6 @@ class AudioMLP(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-# 实例化模型
-# 这里会自动读取特征的120维和标签的7分类
 model = AudioMLP(input_dim=X.shape[1], num_classes=len(le.classes_)).to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
@@ -98,7 +92,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
 # ================== 5. 训练循环 + 早停逻辑 ==================
 epochs = 100
 best_val_loss = float('inf')
-patience = 12  # 增加容忍度
+patience = 12
 counter = 0
 
 print(f"\n🔥 开始训练 (使用设备: {DEVICE})...")
@@ -129,14 +123,11 @@ for epoch in range(epochs):
     val_acc = correct / len(X_val)
     avg_val_loss = val_loss / len(val_loader)
 
-    # 打印进度 (每 2 轮打印一次)
     if (epoch + 1) % 2 == 0:
         print(f"Epoch [{epoch + 1:02d}/{epochs}] | Val Loss: {avg_val_loss:.4f} | Val Acc: {val_acc:.4f}")
 
-    # 早停检查与保存
     if avg_val_loss < best_val_loss:
         best_val_loss = avg_val_loss
-        # 保存为 .pt 格式到 models 文件夹
         torch.save(model.state_dict(), MODEL_SAVE_PATH)
         counter = 0
     else:
@@ -147,7 +138,6 @@ for epoch in range(epochs):
 
 # ================== 6. 最终评估 ==================
 print("\n✨ 加载最佳权重并生成最终报告...")
-# 确保这里加载的是新保存到 models 文件夹下的 .pt 文件
 model.load_state_dict(torch.load(MODEL_SAVE_PATH))
 model.eval()
 
